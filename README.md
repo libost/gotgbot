@@ -26,7 +26,7 @@ If you have any questions, come find us in our [telegram support chat](https://t
 Download the library with the standard `go get` command:
 
 ```bash
-go get github.com/PaulSonOfLars/gotgbot/v2
+go get github.com/libost/gotgbot/v2
 ```
 
 ### Example bots
@@ -56,3 +56,7 @@ specification repo at the commit pinned in the `spec_commit` file.
 To upgrade the commit in `spec_commit` and regenerate your code, simply run `GOTGBOT_UPGRADE=true go generate`.
 This will fetch the latest commit sha, and regenerate the library against that, giving you the latest version
 available.
+
+## Feature in this fork
+
+`SendRichMessage` method supports `InputFileByReader` now.
