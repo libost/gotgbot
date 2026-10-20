@@ -5,11 +5,11 @@ import (
 	"math/rand"
 	"testing"
 
-	"github.com/PaulSonOfLars/gotgbot/v2"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/conversation"
-	"github.com/PaulSonOfLars/gotgbot/v2/ext/handlers/filters/message"
+	"github.com/libost/gotgbot/v2"
+	"github.com/libost/gotgbot/v2/ext"
+	"github.com/libost/gotgbot/v2/ext/handlers"
+	"github.com/libost/gotgbot/v2/ext/handlers/conversation"
+	"github.com/libost/gotgbot/v2/ext/handlers/filters/message"
 )
 
 func TestBasicConversation(t *testing.T) {

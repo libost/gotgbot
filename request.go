@@ -174,10 +174,8 @@ func (bot *BaseBotClient) RequestWithContext(parentCtx context.Context, token st
 
 func allFilesSeekable(params map[string]any) bool {
 	for _, v := range params {
-		if f, ok := v.(*FileReader); ok && f.Data != nil {
-			if _, ok := f.Data.(io.Seeker); !ok {
-				return false
-			}
+		if !filesAreSeekable(v) {
+			return false
 		}
 	}
 	return true

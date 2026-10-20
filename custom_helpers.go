@@ -3,6 +3,8 @@ package gotgbot
 import (
 	"encoding/json"
 	"fmt"
+	"mime/multipart"
+	"reflect"
 	"strconv"
 	"strings"
 )
@@ -245,4 +247,64 @@ func (m RichMessage) Markdown() (string, []InputRichMessageMedia) {
 		r.renderBlockMarkdown(block, 0)
 	}
 	return r.sb.String(), r.media
+}
+
+// Attach uploads files referenced by a rich message and replaces them with
+// attach:// references before the message is JSON encoded.
+func (m InputRichMessage) Attach(_ string, w *multipart.Writer) error {
+	for i, media := range m.Media {
+		name := media.Id
+		if name == "" {
+			name = fmt.Sprintf("media_%d", i)
+		}
+		if err := attachRichValue(media.Media, name, w); err != nil {
+			return fmt.Errorf("failed to attach rich message media %s: %w", name, err)
+		}
+	}
+
+	for i, block := range m.Blocks {
+		if err := attachRichValue(block, fmt.Sprintf("block_%d", i), w); err != nil {
+			return fmt.Errorf("failed to attach rich message block %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+func attachRichValue(value any, name string, w *multipart.Writer) error {
+	if value == nil {
+		return nil
+	}
+	if media, ok := value.(InputMedia); ok {
+		return media.Attach(name, w)
+	}
+
+	rv := reflect.ValueOf(value)
+	for rv.Kind() == reflect.Interface || rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return nil
+		}
+		rv = rv.Elem()
+	}
+
+	switch rv.Kind() {
+	case reflect.Slice, reflect.Array:
+		for i := 0; i < rv.Len(); i++ {
+			if err := attachRichValue(rv.Index(i).Interface(), fmt.Sprintf("%s_%d", name, i), w); err != nil {
+				return err
+			}
+		}
+	case reflect.Struct:
+		for i := 0; i < rv.NumField(); i++ {
+			field := rv.Field(i)
+			if !field.CanInterface() {
+				continue
+			}
+			if err := attachRichValue(field.Interface(), fmt.Sprintf("%s_%d", name, i), w); err != nil {
+				return err
+			}
+		}
+	}
+
+	return nil
 }

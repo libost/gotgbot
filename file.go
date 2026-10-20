@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
+	"reflect"
 )
 
 // InputFile (https://core.telegram.org/bots/api#inputfile)
@@ -118,4 +119,50 @@ func InputFileByID(fileID string) InputFileOrString {
 //	m, err := b.SendDocument(<chat_id>, gotgbot.InputFileByReader("file.txt", strings.NewReader("Some file contents")), nil)
 func InputFileByReader(name string, r io.Reader) InputFile {
 	return &FileReader{Name: name, Data: r}
+}
+
+func filesAreSeekable(value any) bool {
+	if value == nil {
+		return true
+	}
+	if file, ok := value.(*FileReader); ok {
+		return file == nil || file.Data == nil || isSeekable(file.Data)
+	}
+
+	rv := reflect.ValueOf(value)
+	for rv.Kind() == reflect.Interface || rv.Kind() == reflect.Pointer {
+		if rv.IsNil() {
+			return true
+		}
+		rv = rv.Elem()
+	}
+
+	switch rv.Kind() {
+	case reflect.Array, reflect.Slice:
+		for i := 0; i < rv.Len(); i++ {
+			if !filesAreSeekable(rv.Index(i).Interface()) {
+				return false
+			}
+		}
+	case reflect.Map:
+		for _, key := range rv.MapKeys() {
+			if !filesAreSeekable(rv.MapIndex(key).Interface()) {
+				return false
+			}
+		}
+	case reflect.Struct:
+		for i := 0; i < rv.NumField(); i++ {
+			field := rv.Field(i)
+			if field.CanInterface() && !filesAreSeekable(field.Interface()) {
+				return false
+			}
+		}
+	}
+
+	return true
+}
+
+func isSeekable(value io.Reader) bool {
+	_, ok := value.(io.Seeker)
+	return ok
 }

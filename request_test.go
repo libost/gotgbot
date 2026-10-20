@@ -118,6 +118,70 @@ func TestFileNotBufferedIntoMemory(t *testing.T) {
 	}
 }
 
+func TestRichMessageUploadsReaderMedia(t *testing.T) {
+	params := map[string]any{
+		"chat_id": "123",
+		"rich_message": InputRichMessage{
+			Html: "<p>file</p>",
+			Media: []InputRichMessageMedia{{
+				Id: "1",
+				Media: InputMediaDocument{
+					Media: InputFileByReader("test.txt", bytes.NewReader([]byte("rich file"))),
+				},
+			}},
+		},
+	}
+
+	req, err := (&BaseBotClient{}).buildRequest(context.Background(), params, "test-token", "sendRichMessage", nil)
+	if err != nil {
+		t.Fatalf("failed to build request: %v", err)
+	}
+	if req.GetBody == nil {
+		t.Fatal("GetBody should be set for seekable rich message media")
+	}
+
+	bodyBytes, err := io.ReadAll(req.Body)
+	if err != nil {
+		t.Fatalf("failed to read multipart body: %v", err)
+	}
+
+	_, mediaParams, err := mime.ParseMediaType(req.Header.Get("Content-Type"))
+	if err != nil {
+		t.Fatalf("failed to parse content type: %v", err)
+	}
+
+	reader := multipart.NewReader(bytes.NewReader(bodyBytes), mediaParams["boundary"])
+	var richMessage []byte
+	var file []byte
+	for {
+		part, err := reader.NextPart()
+		if errors.Is(err, io.EOF) {
+			break
+		}
+		if err != nil {
+			t.Fatalf("failed to read multipart part: %v", err)
+		}
+
+		contents, err := io.ReadAll(part)
+		if err != nil {
+			t.Fatalf("failed to read multipart field %s: %v", part.FormName(), err)
+		}
+		switch part.FormName() {
+		case "rich_message":
+			richMessage = contents
+		case "1":
+			file = contents
+		}
+	}
+
+	if !bytes.Equal(file, []byte("rich file")) {
+		t.Errorf("uploaded file = %q, want %q", file, "rich file")
+	}
+	if !bytes.Contains(richMessage, []byte(`"media":"attach://1"`)) {
+		t.Errorf("rich_message does not reference uploaded media: %s", richMessage)
+	}
+}
+
 // We want to make sure that retriable requests can in fact be retried - this simulates the HTTP2 GOAWAY state.
 func TestGetBodyReturnsCorrectRetryReader(t *testing.T) {
 	fileContents := []byte("hello, this is some file content")

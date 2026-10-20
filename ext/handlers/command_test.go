@@ -3,7 +3,7 @@ package handlers
 import (
 	"testing"
 
-	"github.com/PaulSonOfLars/gotgbot/v2"
+	"github.com/libost/gotgbot/v2"
 )
 
 func TestCheckMessage(t *testing.T) {
